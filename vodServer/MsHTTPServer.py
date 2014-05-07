@@ -198,6 +198,7 @@ def test(HandlerClass = SimpleMsHTTPRequestHandler,
 def run(listeningPort):
     handler = SimpleMsHTTPRequestHandler
     httpd = SocketServer.TCPServer(("", listeningPort), handler)
+    print("Listening for HTTP requests on port " + str(listeningPort) + "...")
     httpd.serve_forever()
 
 if __name__ == '__main__':
