@@ -47,45 +47,41 @@ class TcpClient:
         httpd = SocketServer.TCPServer(("", self.listeningPort), handler)
         httpd.serve_forever()
         
-    def requestContent(self, contentIndex):
-        if contentIndex < 0 or contentIndex >= len(self.catalog):
-            raise IndexOutOfRange("Index " + contentIndex + ", catalog size " + self.catalog.len)
-        else:
-            downloaded = False
-            location = self.baseDomain
-            port = self.targetPort
-            fileName = self.catalog[contentIndex]+'.txt'
-            while not downloaded:
-                conn = httplib.HTTPConnection(location, int(port))
-                conn.request("GET", fileName)
-                print self.getTimeStamp(), 'Sent connection request to ' + location+':'+str(port)
-                response = conn.getresponse()
-                if response.status == 307:
-            	    newlocation = response.getheader('location')
-            	    sep = newlocation.rfind(':')
-            	    location = newlocation[:sep]
-            	    port = newlocation[sep+1:]
-            	    print self.getTimeStamp(), 'Received http redirect to', location + ':' + port
-                elif response.status == 200:
-                    downloaded = True
-                    print self.getTimeStamp(), 'Received http 200 OK'
-                else:
-                    raise WrongHttpResponse(response.status + response.reason)
-            with open(fileName, 'wb') as out:
-                out.write(response.read())                
-                print self.getTimeStamp(), fileName, 'written succesfully'
-                self.cached.append(self.catalog[contentIndex])
+    def requestContent(self, fileName):
+        downloaded = False
+        location = self.baseDomain
+        port = self.targetPort
+        while not downloaded:
+            conn = httplib.HTTPConnection(location, int(port))
+            conn.request("GET", fileName)
+            print self.getTimeStamp(), 'Sent connection request to ' + location+':'+str(port)
+            response = conn.getresponse()
+            if response.status == 307:
+                newlocation = response.getheader('location')
+            	sep = newlocation.rfind(':')
+            	location = newlocation[:sep]
+            	port = newlocation[sep+1:]
+            	print self.getTimeStamp(), 'Received http redirect to', location + ':' + port
+            elif response.status == 200:
+                downloaded = True
+                print self.getTimeStamp(), 'Received http 200 OK'
+            else:
+                raise WrongHttpResponse(str(response.status) + ' ' + response.reason)
+        with open(fileName, 'wb') as out:
+            out.write(response.read())                
+            print self.getTimeStamp(), fileName, 'written succesfully'
+            # self.cached.append(self.catalog[contentIndex])
 
     def interactiveShell(self):
     	running = True
         while running:
             print "Catalog: ", self.catalog
             index = input("Enter the index of the content you want to retrieve: ")
-            try: 
-		j = int(index)
+            try:
+                j = int(index)
                 for i in range(self.numRequests):
-		    print 'Request', i+1, 'of', self.numRequests
-                    self.requestContent(j)
+                    print 'Request', i+1, 'of', self.numRequests
+                    self.requestContent(self.catalog[j])
             except TypeError:
                 print("Please insert a number")
             except IndexOutOfRange as e: 
@@ -95,7 +91,7 @@ class TcpClient:
                 running = False
             except:
             	print("Unexpected error:", sys.exc_info()[0])
-		raise
+            	raise
             	running = False
 
     def getTimeStamp(self):
@@ -124,4 +120,7 @@ if __name__ == "__main__":
     else:
         listeningPort = 9001
     client = TcpClient(listeningPort, targetPort, numRequests)
-    client.interactiveShell()
+    for i in range(numRequests):
+        print 'Request', i+1, 'of', numRequests
+        client.requestContent("first.txt")
+    # client.interactiveShell()
